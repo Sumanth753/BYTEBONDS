@@ -1,0 +1,426 @@
+{
+  "version": "0.1.0",
+  "name": "bytebonds",
+  "instructions": [
+    {
+      "name": "initialize",
+      "accounts": [],
+      "args": []
+    },
+    {
+      "name": "createBond",
+      "accounts": [
+        {
+          "name": "freelancer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "bond",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "bondSeed",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "duration",
+          "type": "u8"
+        },
+        {
+          "name": "interestRate",
+          "type": "u8"
+        },
+        {
+          "name": "incomeProof",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "invest",
+      "accounts": [
+        {
+          "name": "investor",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "bond",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "freelancerAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "investment",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "makeRepayment",
+      "accounts": [
+        {
+          "name": "freelancer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "bond",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "repayment",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "investorAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "repaymentId",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Bond",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "freelancer",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "duration",
+            "type": "u8"
+          },
+          {
+            "name": "interestRate",
+            "type": "u8"
+          },
+          {
+            "name": "funded",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "BondStatus"
+            }
+          },
+          {
+            "name": "incomeProof",
+            "type": "string"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          },
+          {
+            "name": "bondSeed",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Investment",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "investor",
+            "type": "publicKey"
+          },
+          {
+            "name": "bond",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Repayment",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bond",
+            "type": "publicKey"
+          },
+          {
+            "name": "investor",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "dueDate",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "RepaymentStatus"
+            }
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          },
+          {
+            "name": "paidAt",
+            "type": {
+              "option": "i64"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "BondStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "Funded"
+          },
+          {
+            "name": "Repaying"
+          },
+          {
+            "name": "Completed"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RepaymentStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Paid"
+          },
+          {
+            "name": "Overdue"
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "BondCreatedEvent",
+      "fields": [
+        {
+          "name": "bond",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "freelancer",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "duration",
+          "type": "u8",
+          "index": false
+        },
+        {
+          "name": "interestRate",
+          "type": "u8",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "InvestmentEvent",
+      "fields": [
+        {
+          "name": "investment",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "bond",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "investor",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "RepaymentEvent",
+      "fields": [
+        {
+          "name": "repayment",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "bond",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "BondNotOpen",
+      "msg": "Bond is not open for investment"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidDuration",
+      "msg": "Invalid duration"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidInterestRate",
+      "msg": "Invalid interest rate"
+    },
+    {
+      "code": 6004,
+      "name": "BondOverfunded",
+      "msg": "Bond would be overfunded"
+    },
+    {
+      "code": 6005,
+      "name": "RepaymentNotPending",
+      "msg": "Repayment is not pending"
+    },
+    {
+      "code": 6006,
+      "name": "StringTooLong",
+      "msg": "String too long"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidFreelancer",
+      "msg": "Invalid freelancer account"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidInvestor",
+      "msg": "Invalid investor account"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidRepayment",
+      "msg": "Invalid repayment account"
+    },
+    {
+      "code": 6010,
+      "name": "NotBondOwner",
+      "msg": "Not the bond owner"
+    }
+  ]
+}
