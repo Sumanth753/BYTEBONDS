@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useMemo } from "react"
-import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react"
+import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from "@solana/wallet-adapter-react"
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui"
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom"
 import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare"
@@ -13,7 +13,8 @@ import { clusterApiUrl } from "@solana/web3.js"
 // Default styles that can be overridden by your app
 require("@solana/wallet-adapter-react-ui/styles.css")
 
-export const WalletContextProvider = ({ children }: { children: React.ReactNode }) => {
+// Export with the name that's being imported in layout.tsx
+export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
   // You can also provide a custom endpoint instead of a cluster API url
   const endpoint = useMemo(() => clusterApiUrl("devnet"), [])
 
@@ -26,9 +27,9 @@ export const WalletContextProvider = ({ children }: { children: React.ReactNode 
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
+      <SolanaWalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>{children}</WalletModalProvider>
-      </WalletProvider>
+      </SolanaWalletProvider>
     </ConnectionProvider>
   )
 }

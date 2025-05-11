@@ -1,156 +1,131 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useWallet } from "@solana/wallet-adapter-react"
-import { useConnection } from "@solana/wallet-adapter-react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, Loader2 } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
-import { makeInstallmentRepayment } from "@/lib/program"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { toast } from "@/components/ui/use-toast"
+import type { SimplifiedBond } from "../lib/simplified-program"
+import { Loader2 } from "lucide-react"
+import { serverMakeRepayment } from "../app/actions/repayment-actions"
 
 interface InstallmentPaymentProps {
-  repayment: any
-  onSuccess?: () => void
+  bond: SimplifiedBond
+  onRepaymentComplete: () => void
 }
 
-export function InstallmentPayment({ repayment, onSuccess }: InstallmentPaymentProps) {
-  const { publicKey, sendTransaction, connected, wallet } = useWallet()
-  const { connection } = useConnection()
-  const [isLoading, setIsLoading] = useState(false)
+export function InstallmentPayment({ bond, onRepaymentComplete }: InstallmentPaymentProps) {
+  const { publicKey } = useWallet()
+  const [loading, setLoading] = useState<boolean>(false)
+  const [progress, setProgress] = useState<number>(0)
+  const [nextInstallmentAmount, setNextInstallmentAmount] = useState<number>(0)
+  const [remainingInstallments, setRemainingInstallments] = useState<number>(0)
+
+  useEffect(() => {
+    if (bond) {
+      // Calculate progress
+      const totalAmount = bond.amount
+      const repaidAmount = bond.totalRepaid
+      const progressPercentage = (repaidAmount / totalAmount) * 100
+      setProgress(progressPercentage)
+
+      // Calculate remaining installments
+      const installmentAmount = bond.installmentAmount || totalAmount / bond.duration
+      const remainingAmount = totalAmount - repaidAmount
+      const remaining = Math.ceil(remainingAmount / installmentAmount)
+      setRemainingInstallments(remaining)
+
+      // Set next installment amount
+      setNextInstallmentAmount(remainingAmount < installmentAmount ? remainingAmount : installmentAmount)
+    }
+  }, [bond])
 
   const handlePayInstallment = async () => {
-    if (!publicKey || !connected || !connection) {
+    if (!publicKey) {
       toast({
         title: "Wallet not connected",
-        description: "Please connect your wallet to make a payment.",
+        description: "Please connect your wallet to make a payment",
         variant: "destructive",
       })
       return
     }
 
     try {
-      setIsLoading(true)
+      setLoading(true)
 
-      // Make the installment payment
-      const { transaction, signers } = await makeInstallmentRepayment(repayment.id, repayment.amount)
+      // For simplicity, we're using a dummy investor address
+      // In a real application, you would fetch the actual investor from the investments
+      const investorAddress = "8YLKoCu4MWp5RvPRpKjzgS5zLxwUbKs9jA1YMF4gdYB5" // Replace with actual investor address
 
-      // Get a recent blockhash
-      const { blockhash } = await connection.getLatestBlockhash("confirmed")
-      transaction.recentBlockhash = blockhash
-      transaction.feePayer = publicKey
+      // Make the repayment using the server action
+      const amountInLamports = nextInstallmentAmount * 1_000_000_000 // Convert SOL to lamports
+      const result = await serverMakeRepayment(bond.address, investorAddress, amountInLamports)
 
-      // Sign with any additional signers
-      if (signers.length > 0) {
-        transaction.partialSign(...signers)
+      if (result.success) {
+        toast({
+          title: "Installment payment successful",
+          description: `Transaction signature: ${result.signature}`,
+        })
+
+        // Call the callback
+        onRepaymentComplete()
+      } else {
+        toast({
+          title: "Payment failed",
+          description: `Error: ${result.error}`,
+          variant: "destructive",
+        })
       }
-
-      // Send the transaction
-      const signature = await sendTransaction(transaction, connection)
-      console.log("Installment payment transaction sent with signature:", signature)
-
-      // Wait for confirmation
-      await connection.confirmTransaction(signature, "confirmed")
-
-      toast({
-        title: "Payment Successful",
-        description: `Your payment of ${repayment.amount} SOL has been processed successfully.`,
-      })
-
-      // Call onSuccess callback if provided
-      if (onSuccess) {
-        onSuccess()
-      }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error making installment payment:", error)
-
-      let errorMessage = "Failed to process payment. Please try again."
-
-      if (error.message) {
-        if (error.message.includes("User rejected")) {
-          errorMessage = "Transaction was rejected in your wallet."
-        } else if (error.message.includes("insufficient funds")) {
-          errorMessage = "Insufficient funds to complete the transaction."
-        } else {
-          errorMessage = `Error: ${error.message}`
-        }
-      }
-
       toast({
-        title: "Payment Failed",
-        description: errorMessage,
+        title: "Payment failed",
+        description: `Error: ${error instanceof Error ? error.message : String(error)}`,
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
-  if (!repayment) {
-    return (
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Missing Information</AlertTitle>
-        <AlertDescription>Repayment information is missing.</AlertDescription>
-      </Alert>
-    )
-  }
-
-  // Check if the repayment is already paid
-  if (repayment.status === "paid") {
-    return (
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Installment #{repayment.installmentNumber}</CardTitle>
-            <Badge variant="outline">Paid</Badge>
-          </div>
-          <CardDescription>Due: {new Date(repayment.dueDate).toLocaleDateString()}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>Amount: {repayment.amount} SOL</p>
-          <p className="text-sm text-gray-500">This installment has already been paid.</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle>Installment #{repayment.installmentNumber}</CardTitle>
-          <Badge variant={repayment.status === "overdue" ? "destructive" : "default"}>
-            {repayment.status === "overdue" ? "Overdue" : "Pending"}
-          </Badge>
-        </div>
-        <CardDescription>Due: {new Date(repayment.dueDate).toLocaleDateString()}</CardDescription>
+        <CardTitle>Installment Payment</CardTitle>
+        <CardDescription>Make your next installment payment</CardDescription>
       </CardHeader>
-      <CardContent>
-        <p>Amount: {repayment.amount} SOL</p>
-        {repayment.status === "overdue" && (
-          <Alert variant="destructive" className="mt-2">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Payment Overdue</AlertTitle>
-            <AlertDescription>
-              This payment is overdue by {Math.floor((Date.now() - repayment.dueDate) / (24 * 60 * 60 * 1000))} days.
-            </AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-      <CardFooter>
-        <Button onClick={handlePayInstallment} disabled={isLoading} className="w-full">
-          {isLoading ? (
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Repayment Progress</span>
+            <span>{progress.toFixed(0)}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Next Payment</p>
+            <p className="text-2xl font-bold">{nextInstallmentAmount.toFixed(2)} SOL</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Remaining Installments</p>
+            <p className="text-2xl font-bold">{remainingInstallments}</p>
+          </div>
+        </div>
+
+        <Button onClick={handlePayInstallment} disabled={loading || nextInstallmentAmount <= 0} className="w-full">
+          {loading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
             </>
           ) : (
-            "Make Payment"
+            "Pay Installment"
           )}
         </Button>
-      </CardFooter>
+      </CardContent>
     </Card>
   )
 }

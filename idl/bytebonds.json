@@ -128,6 +128,65 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "makeCustomRepayment",
+      "accounts": [
+        {
+          "name": "freelancer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "bond",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "investor",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "setRepaymentType",
+      "accounts": [
+        {
+          "name": "freelancer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "bond",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "repaymentType",
+          "type": {
+            "defined": "RepaymentType"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -181,6 +240,24 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "repaymentType",
+            "type": {
+              "defined": "RepaymentType"
+            }
+          },
+          {
+            "name": "totalRepaid",
+            "type": "u64"
+          },
+          {
+            "name": "installmentsPaid",
+            "type": "u64"
+          },
+          {
+            "name": "installmentAmount",
+            "type": "u64"
           }
         ]
       }
@@ -245,6 +322,10 @@
             "type": {
               "option": "i64"
             }
+          },
+          {
+            "name": "installmentNumber",
+            "type": "u8"
           }
         ]
       }
@@ -284,6 +365,20 @@
           },
           {
             "name": "Overdue"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RepaymentType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "LumpSum"
+          },
+          {
+            "name": "Installments"
           }
         ]
       }
@@ -364,6 +459,63 @@
           "index": false
         }
       ]
+    },
+    {
+      "name": "CustomRepaymentEvent",
+      "fields": [
+        {
+          "name": "bond",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "freelancer",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "investor",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "totalRepaid",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "isCompleted",
+          "type": "bool",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "RepaymentTypeSetEvent",
+      "fields": [
+        {
+          "name": "bond",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "freelancer",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "repaymentType",
+          "type": {
+            "defined": "RepaymentType"
+          },
+          "index": false
+        }
+      ]
     }
   ],
   "errors": [
@@ -374,53 +526,68 @@
     },
     {
       "code": 6001,
+      "name": "BondNotFunded",
+      "msg": "Bond is not funded"
+    },
+    {
+      "code": 6002,
       "name": "InvalidAmount",
       "msg": "Invalid amount"
     },
     {
-      "code": 6002,
+      "code": 6003,
       "name": "InvalidDuration",
       "msg": "Invalid duration"
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "InvalidInterestRate",
       "msg": "Invalid interest rate"
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "BondOverfunded",
       "msg": "Bond would be overfunded"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "RepaymentNotPending",
       "msg": "Repayment is not pending"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "StringTooLong",
       "msg": "String too long"
     },
     {
-      "code": 6007,
+      "code": 6008,
       "name": "InvalidFreelancer",
       "msg": "Invalid freelancer account"
     },
     {
-      "code": 6008,
+      "code": 6009,
       "name": "InvalidInvestor",
       "msg": "Invalid investor account"
     },
     {
-      "code": 6009,
+      "code": 6010,
       "name": "InvalidRepayment",
       "msg": "Invalid repayment account"
     },
     {
-      "code": 6010,
+      "code": 6011,
       "name": "NotBondOwner",
       "msg": "Not the bond owner"
+    },
+    {
+      "code": 6012,
+      "name": "BondAlreadyFunded",
+      "msg": "Bond already funded"
+    },
+    {
+      "code": 6013,
+      "name": "ExcessiveRepayment",
+      "msg": "Excessive repayment amount"
     }
   ]
 }

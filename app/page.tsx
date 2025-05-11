@@ -1,43 +1,58 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import Image from "next/image"
+import { motion, AnimatePresence } from "framer-motion"
 import { WalletMultiButton } from "@/components/wallet-multi-button"
 import { useWallet } from "@solana/wallet-adapter-react"
-import { FreelancerStats, InvestorStats } from "@/components/dashboard-stats"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
-import { testProgramConnection } from "@/lib/program"
+import { RoleSelector } from "@/components/role-selector"
+import { getUserRole } from "@/lib/user-role"
 
 export default function Home() {
-  const { connected } = useWallet()
-  const [programConnected, setProgramConnected] = useState<boolean | null>(null)
+  const { connected, publicKey } = useWallet()
+  const [showRoleSelector, setShowRoleSelector] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
-    const checkConnection = async () => {
-      const result = await testProgramConnection()
-      setProgramConnected(result)
-    }
+    if (connected && publicKey) {
+      const userRole = getUserRole(publicKey.toString())
 
-    checkConnection()
-  }, [])
+      if (userRole === "freelancer") {
+        router.push("/freelancer")
+      } else if (userRole === "investor") {
+        router.push("/investor")
+      } else {
+        setShowRoleSelector(true)
+      }
+    } else {
+      setShowRoleSelector(false)
+    }
+  }, [connected, publicKey, router])
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="border-b">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white">
+      <header className="border-b border-gray-800">
         <div className="container flex h-16 items-center justify-between px-4 md:px-6">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold">ByteBonds</span>
+            <motion.span
+              className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-500"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              ByteBonds
+            </motion.span>
           </Link>
           <nav className="hidden md:flex gap-6">
-            <Link href="/" className="text-sm font-medium hover:underline underline-offset-4">
+            <Link href="/" className="text-sm font-medium text-purple-400 transition-colors">
               Home
             </Link>
-            <Link href="/freelancer" className="text-sm font-medium hover:underline underline-offset-4">
+            <Link href="/freelancer" className="text-sm font-medium hover:text-purple-400 transition-colors">
               For Freelancers
             </Link>
-            <Link href="/investor" className="text-sm font-medium hover:underline underline-offset-4">
+            <Link href="/investor" className="text-sm font-medium hover:text-purple-400 transition-colors">
               For Investors
             </Link>
           </nav>
@@ -47,241 +62,190 @@ export default function Home() {
         </div>
       </header>
       <main className="flex-1">
-        {programConnected === false && (
-          <Alert variant="destructive" className="m-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Connection Error</AlertTitle>
-            <AlertDescription>
-              Could not connect to the ByteBonds program on Solana devnet. Please check the Program ID.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {programConnected === true && (
-          <Alert className="m-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Connected to Devnet</AlertTitle>
-            <AlertDescription>Successfully connected to the ByteBonds program on Solana devnet.</AlertDescription>
-          </Alert>
-        )}
-
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-950">
-          <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 items-center">
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="space-y-2">
-                  <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl">
-                    Get Paid Upfront, Invest in Talent
-                  </h1>
-                  <p className="max-w-[600px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
-                    ByteBonds connects freelancers with inconsistent income to investors who provide upfront SOL in
-                    exchange for future earnings.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Link href="/freelancer">
-                    <Button className="px-8">I'm a Freelancer</Button>
-                  </Link>
-                  <Link href="/investor">
-                    <Button variant="outline" className="px-8">
-                      I'm an Investor
-                    </Button>
-                  </Link>
+        <AnimatePresence mode="wait">
+          {showRoleSelector ? (
+            <motion.section
+              key="role-selector"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="container py-12 md:py-24 lg:py-32"
+            >
+              <RoleSelector walletAddress={publicKey?.toString() || ""} />
+            </motion.section>
+          ) : (
+            <motion.section
+              key="hero"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full py-12 md:py-24 lg:py-32"
+            >
+              <div className="container px-4 md:px-6">
+                <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
+                  <div className="flex flex-col justify-center space-y-4">
+                    <div className="space-y-2">
+                      <motion.h1
+                        className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-500"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                      >
+                        Decentralized Funding for Freelancers
+                      </motion.h1>
+                      <motion.p
+                        className="max-w-[600px] text-gray-400 md:text-xl"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                      >
+                        ByteBonds connects freelancers with investors through blockchain-powered bonds. Get funded for
+                        your projects or invest in talented freelancers.
+                      </motion.p>
+                    </div>
+                    <motion.div
+                      className="flex flex-col gap-2 min-[400px]:flex-row"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                    >
+                      <WalletMultiButton />
+                    </motion.div>
+                  </div>
+                  <motion.div
+                    className="flex items-center justify-center"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.5, type: "spring", stiffness: 100 }}
+                  >
+                    <Image
+                      src="/blockchain-freelance-platform.png"
+                      alt="ByteBonds Platform"
+                      width={600}
+                      height={400}
+                      className="rounded-lg object-cover border border-gray-800 shadow-xl shadow-purple-900/20"
+                    />
+                  </motion.div>
                 </div>
               </div>
-              <div className="mx-auto lg:ml-auto flex flex-col space-y-4">
-                <img
-                  src="/blockchain-freelance-platform.png"
-                  alt="ByteBonds Platform"
-                  className="mx-auto aspect-video overflow-hidden rounded-xl object-cover"
-                  width={500}
-                  height={400}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
+            </motion.section>
+          )}
+        </AnimatePresence>
 
-        <section className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-2 lg:gap-12">
-              <FreelancerStats />
-              <InvestorStats />
-            </div>
-          </div>
-        </section>
-
-        <section className="w-full py-12 md:py-24 lg:py-32">
+        <motion.section
+          className="w-full py-12 md:py-24 lg:py-32 bg-gray-900"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">How It Works</h2>
-                <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
-                  ByteBonds uses Solana blockchain to create a transparent, efficient marketplace for income-backed
-                  bonds.
+                <div className="inline-block rounded-lg bg-gray-800 px-3 py-1 text-sm">How It Works</div>
+                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-500">
+                  Simple, Transparent, and Secure
+                </h2>
+                <p className="max-w-[900px] text-gray-400 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  ByteBonds uses Solana blockchain to create a transparent and secure platform for freelancers and
+                  investors.
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3 lg:gap-12">
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 md:grid-cols-3 md:gap-12">
+              <motion.div
+                className="flex flex-col items-center space-y-2 border border-gray-800 rounded-lg p-4 bg-gray-900/50 backdrop-blur-sm"
+                whileHover={{ y: -5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-900/20">
                   <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
+                    className="h-8 w-8 text-purple-400"
                     fill="none"
+                    height="24"
                     stroke="currentColor"
-                    strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="h-6 w-6 text-blue-600 dark:text-blue-400"
-                  >
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">For Freelancers</h3>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    Create a bond by providing proof of income and receive upfront SOL. Repay over time with a portion
-                    of your earnings.
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
                     strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-6 w-6 text-blue-600 dark:text-blue-400"
-                  >
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                  </svg>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">For Investors</h3>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    Browse available bonds, invest in talented freelancers, and earn returns as they make repayments.
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
                     viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-6 w-6 text-blue-600 dark:text-blue-400"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
                   >
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                    <path d="M12 2v20" />
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                   </svg>
                 </div>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Smart Contracts</h3>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    All transactions are secured by Solana blockchain, ensuring transparency, low fees, and fast
-                    settlement.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-50 dark:bg-gray-900">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Supported Wallets</h2>
-                <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
-                  ByteBonds supports multiple Solana wallets for your convenience and security.
+                <h3 className="text-xl font-bold text-white">Create Bonds</h3>
+                <p className="text-gray-400 text-center">
+                  Freelancers create bonds with details about their project, funding needs, and repayment terms.
                 </p>
-              </div>
-            </div>
-            <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 md:grid-cols-2 lg:grid-cols-4">
-              <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border p-4 shadow-sm">
-                <img src="/phantom-wallet-logo.png" alt="Phantom" className="h-16 w-16" />
-                <h3 className="text-lg font-medium">Phantom</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Popular Solana wallet</p>
-              </div>
-              <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border p-4 shadow-sm">
-                <img src="/solflare-wallet-logo.png" alt="Solflare" className="h-16 w-16" />
-                <h3 className="text-lg font-medium">Solflare</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Feature-rich wallet</p>
-              </div>
-              <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border p-4 shadow-sm">
-                <img src="/backpack-wallet-logo.png" alt="Backpack" className="h-16 w-16" />
-                <h3 className="text-lg font-medium">Backpack</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Secure and simple</p>
-              </div>
-              <div className="flex flex-col items-center justify-center space-y-2 rounded-lg border p-4 shadow-sm">
-                <img src="/coinbase-wallet-logo.png" alt="Coinbase" className="h-16 w-16" />
-                <h3 className="text-lg font-medium">Coinbase</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Exchange integration</p>
-              </div>
-            </div>
-            <div className="flex justify-center">
-              <Button variant="outline" className="mt-4">
-                <Link href="/freelancer">Connect Your Wallet</Link>
-              </Button>
+              </motion.div>
+              <motion.div
+                className="flex flex-col items-center space-y-2 border border-gray-800 rounded-lg p-4 bg-gray-900/50 backdrop-blur-sm"
+                whileHover={{ y: -5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-900/20">
+                  <svg
+                    className="h-8 w-8 text-blue-400"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+                    <path d="M13 5v14" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-white">Get Funded</h3>
+                <p className="text-gray-400 text-center">
+                  Investors browse available bonds and fund those that match their investment criteria.
+                </p>
+              </motion.div>
+              <motion.div
+                className="flex flex-col items-center space-y-2 border border-gray-800 rounded-lg p-4 bg-gray-900/50 backdrop-blur-sm"
+                whileHover={{ y: -5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-900/20">
+                  <svg
+                    className="h-8 w-8 text-green-400"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M12 22V8" />
+                    <path d="m19 15-7-7-7 7" />
+                    <rect height="4" width="4" x="10" y="2" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-white">Earn Returns</h3>
+                <p className="text-gray-400 text-center">
+                  Freelancers make repayments according to the terms, and investors earn interest on their investments.
+                </p>
+              </motion.div>
             </div>
           </div>
-        </section>
+        </motion.section>
       </main>
-      <footer className="border-t">
-        <div className="container flex flex-col gap-4 py-10 md:flex-row md:gap-8 md:py-12">
-          <div className="flex-1 space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="font-bold">ByteBonds</span>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Connecting freelancers with investors on the Solana blockchain.
-            </p>
-          </div>
-          <div className="flex-1 space-y-4">
-            <div className="text-sm font-medium">Links</div>
-            <nav className="flex flex-col gap-2 text-sm">
-              <Link href="/" className="hover:underline">
-                Home
-              </Link>
-              <Link href="/freelancer" className="hover:underline">
-                For Freelancers
-              </Link>
-              <Link href="/investor" className="hover:underline">
-                For Investors
-              </Link>
-            </nav>
-          </div>
-          <div className="flex-1 space-y-4">
-            <div className="text-sm font-medium">Network</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Running on Solana Devnet</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Program ID: 9Dv2v4Lhcndjv5Mtq3A3m5xZi5JwQkUg3qh9MKT5nqpP
-            </div>
-          </div>
-        </div>
-        <div className="border-t py-6">
-          <div className="container flex flex-col items-center justify-between gap-4 md:flex-row">
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400 md:text-left">
-              © {new Date().getFullYear()} ByteBonds. All rights reserved.
-            </p>
-          </div>
+      <footer className="border-t border-gray-800 py-6">
+        <div className="container flex flex-col items-center justify-between gap-4 md:flex-row">
+          <p className="text-center text-sm text-gray-500 md:text-left">
+            © {new Date().getFullYear()} ByteBonds. All rights reserved.
+          </p>
+          <p className="text-center text-sm text-gray-500 md:text-right">
+            Program ID: 9Dv2v4Lhcndjv5Mtq3A3m5xZi5JwQkUg3qh9MKT5nqpP
+          </p>
         </div>
       </footer>
     </div>
